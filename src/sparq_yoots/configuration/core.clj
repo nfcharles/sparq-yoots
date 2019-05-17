@@ -9,7 +9,7 @@
 
 (defn ^JavaSparkContext spark-context
   "Initializes spark context"
-  [conf & {:keys [app-name master spark-confs with-hive]
+  [conf & {:keys [app-name master spark-confs]
            :or {app-name    "app.driver"
                 master      "local[*]"
                 spark-confs []}}]
@@ -22,7 +22,7 @@
 
 (defn ^SparkSession spark-session
   "Initializes spark session"
-  [& {:keys [app-name master spark-confs]
+  [& {:keys [app-name master spark-confs with-hive]
       :or {app-name    "app.driver"
            master      "local[*]"
            spark-confs []

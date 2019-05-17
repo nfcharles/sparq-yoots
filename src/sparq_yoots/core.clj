@@ -1,6 +1,6 @@
 (ns sparq-yoots.core
   "Main utility functions"
-  (:require [sparq.constats :as sparq.const]
+  (:require [sparq-yoots.constants :as sparq.const]
             [taoensso.timbre :as timbre :refer [infof debugf]])
   (:import [org.apache.spark.sql Column Dataset RelationalGroupedDataset]
            [org.apache.spark.sql functions]
@@ -114,14 +114,14 @@
 
 (defn load-dataframe
   "Loads dataframe from specification."
-  [s-ctx sql-ctx path specs & {:keys [fmt]
-                               :or {fmt (:default sparq.const/read)}}]
+  [sql-ctx path specs & {:keys [fmt]
+                         :or {fmt (:default sparq.const/read)}}]
   (load-dataframe-from-schema sql-ctx path (struct-type specs) fmt))
 
 (defn load-row-rdd
   "Loads row rdd"
-  [sc sql-ctx path & {:keys [fmt]
-                      :or {fmt (:default sparq.const/read)}}]
+  [sql-ctx path & {:keys [fmt]
+                   :or {fmt (:default sparq.const/read)}}]
   (-> sql-ctx
       (.read)
       (.format fmt)

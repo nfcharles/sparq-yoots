@@ -1,4 +1,5 @@
-(ns sparq-yoots.configuration.util)
+(ns sparq-yoots.configuration.util
+  (:require [taoensso.timbre :as timbre :refer [infof info]]))
 
 
 (defn set-hadoop [ctx k v]
@@ -7,12 +8,12 @@
 
 (defn ensure-key-value-pairs
   "Ensures configuration list is even number of entries"
-  [confs fn]
+  [confs configure]
   (if (= 1 (mod (count confs) 2))
     (throw (java.lang.Exception. "Spark configuration requries key/value pairs! %s" confs))
     (do
       (info "Configuring spark...")
-      (fn))))
+      (configure))))
 
 (defn set-spark-conf
   "Set spark configuration"
@@ -25,7 +26,7 @@
       conf)))
 
 (defn set-spark-conf-from-builder
-  [^org.apache.spark.sql.SparkSession.Builder builder spark-confs]
+  [^org.apache.spark.sql.SparkSession$Builder builder spark-confs]
   (ensure-key-value-pairs spark-confs
     (fn []
       (loop [xs (partition 2 spark-confs)
