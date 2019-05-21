@@ -4,7 +4,7 @@
             [taoensso.timbre :as timbre :refer [infof debugf]])
   (:import [org.apache.spark.sql Column Dataset RelationalGroupedDataset]
            [org.apache.spark.sql functions]
-           [org.apache.spark.sql RowFactory Row]
+           [org.apache.spark.sql SQLContext RowFactory Row]
            [org.apache.spark.sql.types StructType
                                        StructField
                                        DataTypes
@@ -13,11 +13,13 @@
 
 
 
+;;;; TODO: We can probably refactor this into smaller modules;  exercise for later.
+
 
 (defn invalid-type
-  ([_type]
+  (^String [_type]
     (format "Typespec parse error. '%s' unexpected." _type))
-  ([_type msg]
+  (^String [_type msg]
     (format "Typespec parse error. '%s' unexpected. %s." _type msg)))
 
 
@@ -27,16 +29,17 @@
 
 (def types
   (hash-map
-    :bin       DataTypes/BinaryType  
+    :bin       DataTypes/BinaryType
     :bool      DataTypes/BooleanType
     :byte      DataTypes/ByteType
-    :cal       DataTypes/CalendarIntervalType    
-    :date      DataTypes/DateType    
-    :float     DataTypes/FloatType    
+    :cal       DataTypes/CalendarIntervalType
+    :date      DataTypes/DateType
+    :double    DataTypes/DoubleType
+    :float     DataTypes/FloatType
     :int       DataTypes/IntegerType
     :long      DataTypes/LongType
-    :null      DataTypes/NullType    
-    :short     DataTypes/ShortType    
+    :null      DataTypes/NullType
+    :short     DataTypes/ShortType
     :string    DataTypes/StringType
     :timestamp DataTypes/TimestampType))
 
@@ -89,13 +92,15 @@
 (defn ^StructType struct-type
   "Builds StructType from columns names and types."
   [colspecs]
-  (loop [xs colspecs
-         acc []]
-    (if-let [cs (first xs)]
-      (let [{:keys [name typespec _]} cs]
-        (infof "Adding <%s>%s to struct" typespec name)
-        (recur (rest xs) (conj acc (parse cs))))
-      (DataTypes/createStructType acc))))
+  (let [xform (fn [xs]
+                (into-array StructField xs))]
+    (loop [xs colspecs
+           acc []]
+      (if-let [cs (first xs)]
+        (let [{:keys [name typespec _]} cs]
+          (infof "Adding <%s>%s to struct" typespec name)
+          (recur (rest xs) (conj acc (parse cs))))
+        (DataTypes/createStructType (xform acc))))))
 
 
 ;; =============
@@ -104,7 +109,7 @@
 
 (defn load-dataframe-from-schema
   "Loads dataframe with defined schema."
-  [sql-ctx path schema fmt]
+  [^SQLContext sql-ctx ^String path ^StructType schema ^String fmt]
   (println (format "DATAFRAME_SOURCE=%s" path))
   (-> sql-ctx
       (.read)
@@ -120,8 +125,8 @@
 
 (defn load-row-rdd
   "Loads row rdd"
-  [sql-ctx path & {:keys [fmt]
-                   :or {fmt (:default sparq.const/read)}}]
+  [^SQLContext sql-ctx ^String path & {:keys [^String fmt]
+                                       :or {^String fmt (:default sparq.const/read)}}]
   (-> sql-ctx
       (.read)
       (.format fmt)
@@ -138,26 +143,85 @@
   (into-array Column xs))
 
 (defn ^Column col
-  [name]
+  [^String name]
   (Column. name))
 
 (defn ^Dataset filter
-  [df condition]
+  [^Dataset df ^Column condition]
   (.filter df condition))
 
 (defn ^Dataset select
-  [df & cols]
+  [^Dataset df & cols]
   "Select expressions"
-  (.select df (col-array cols)))
+  (let [#^Column xs (col-array cols)]
+    (.select df xs)))
 
 (defn ^RelationalGroupedDataset groupby
-  [df & cols]
+  [^Dataset df & cols]
   (.groupBy df (col-array cols)))
 
 (defn ^Dataset aggregate
-  [df col & cols]
+  [^RelationalGroupedDataset df ^Column col & cols]
   (.agg df col (col-array cols)))
 
 (defn ^Dataset sort
-  [df & cols]
+  [^Dataset df & cols]
   (.sort df (col-array cols)))
+
+
+;; ==================
+;; -  Registration  -
+;; ==================
+
+;; ---
+;; Macro
+;; ---
+
+(defn gen-arg-vector
+  "Generates function argument vector
+  Arity assumed to be not greater than UDF limit."
+  [arity & {:keys [init]
+            :or {init []}}]
+  (infof "arity=%s, init=%s" arity init)
+  (loop [xs (take arity (range 97 123))
+         acc init]
+    (if-let [x (first xs)]
+      (recur (rest xs) (conj acc (symbol (str (char x)))))
+      acc)))
+
+(defmacro gen-udf
+  "Dynamically builds UDF of arity `arity`
+  UDF method body is `func` with return type `ret-type`."
+  [func arity ret-type]
+  (let [arg-vector (with-meta (gen-arg-vector arity :init [(symbol "_")]) {:tag ret-type})]
+    `(reify ~(symbol (str "org.apache.spark.sql.api.java.UDF" arity))
+      (~(symbol "call") ~arg-vector
+        (~func ~@(gen-arg-vector arity))))))
+
+
+;; ---
+;; - Reg function
+;; ---
+
+(comment
+;; TODO: UDF generation inside function registration; macro errors, sort out later
+(defn register-function
+  "Registers UDF function.
+  `function` should include argument type hints."
+  [^SQLContext sql-context ^String name function arity ^DataType datatype]
+  (let [udf (gen-udf function arity datatype)]
+    (infof "Registered UDF[%s] -> (%s,%s)" name function udf)
+    (-> sql-context
+        (.udf)
+        (.register name udf datatype))))
+)
+
+(defn register-function
+  "Registers UDF function.
+  `function` should include argument type hints."
+  [^SQLContext sql-context ^String name function ^DataType datatype]
+  (infof "TYPE=%s" function)
+  (-> sql-context
+      (.udf)
+      (.register name function datatype)))
+
