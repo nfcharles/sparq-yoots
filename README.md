@@ -82,7 +82,7 @@ A simple Clojure library designed to facilitate easier integration w/ spark. Con
 (defn -main
   [& args]
   (let [spark-context (...)]
-    (configure-s3 spark-context creds)
+    (configure-s3 spark-context)
     (run ...)))
 ```
 
@@ -100,6 +100,34 @@ A simple Clojure library designed to facilitate easier integration w/ spark. Con
   (run df))
 ```
 
+### UDFs
+
+#### Generation
+
+```clojure
+(ns examples.functions
+  (:require [sparq.core])
+  (:gen-class))
+
+
+(def foo (sparq.core/gen-udf (fn [a b c] (+ a b c)) 3 DataTypes/IntegerType))
+;;                                                  ^ function arity
+```
+
+#### Registration
+
+```clojure
+(ns examples.driver
+  (:require [examples.functions :as func]
+            [spare.core])
+  (:gen-class))
+
+...
+
+(sparq.core/register-function sql-ctx "foo" func/foo DataTypes/IntegerTypes)
+
+...
+```
 
 
 ## License
