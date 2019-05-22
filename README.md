@@ -106,7 +106,7 @@ A simple Clojure library designed to facilitate easier integration w/ spark. Con
 
 ```clojure
 (ns examples.functions
-  (:require [sparq.core])
+  (:require [sparq-yoots.core :as sparq.core])
   (:gen-class))
 
 
@@ -119,12 +119,11 @@ A simple Clojure library designed to facilitate easier integration w/ spark. Con
 ```clojure
 (ns examples.driver
   (:require [examples.functions :as func]
-            [spare.core])
+            [sparq-yoots.core :as sparq.core])
   (:gen-class))
 
-...
 
-(sparq.core/register-function sql-ctx "foo" func/foo DataTypes/IntegerTypes)
+(sparq.core/register-function sql-ctx "foo" func/foo DataTypes/IntegerType)
 
 ...
 ```

@@ -182,7 +182,6 @@
   Arity assumed to be not greater than UDF limit."
   [arity & {:keys [init]
             :or {init []}}]
-  (infof "arity=%s, init=%s" arity init)
   (loop [xs (take arity (range 97 123))
          acc init]
     (if-let [x (first xs)]
@@ -193,7 +192,7 @@
   "Dynamically builds UDF of arity `arity`
   UDF method body is `func` with return type `ret-type`."
   [func arity ret-type]
-  (let [arg-vector (with-meta (gen-arg-vector arity :init [(symbol "_")]) {:tag ret-type})]
+  (let [arg-vector (with-meta (gen-arg-vector arity :init [(symbol "_")]) {:tag (symbol ret-type)})]
     `(reify ~(symbol (str "org.apache.spark.sql.api.java.UDF" arity))
       (~(symbol "call") ~arg-vector
         (~func ~@(gen-arg-vector arity))))))
@@ -224,4 +223,3 @@
   (-> sql-context
       (.udf)
       (.register name function datatype)))
-
