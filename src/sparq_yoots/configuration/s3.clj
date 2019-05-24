@@ -1,5 +1,6 @@
 (ns sparq-yoots.configuration.s3
-  (:require [sparq-yoots.constants :as sparq.const])
+  (:require [sparq-yoots.constants :as sparq.const]
+            [taoensso.timbre :as timbre :refer [infof]]))
 
 
 (defn set-hadoop-config [ctx k v]
@@ -16,8 +17,8 @@
 (defn configure-common
   "Sets access and secret keys"
   [ctx creds]
-  (set-hadoop-config ctx (:access sparq.const/s3a) (.getAWSAccessKeyId creds))
-  (set-hadoop-config ctx (:secret sparq.const/s3a) (.getAWSSecretKey creds)))
+  (set-hadoop-config ctx (:access-key sparq.const/s3a) (.getAWSAccessKeyId creds))
+  (set-hadoop-config ctx (:secret-key sparq.const/s3a) (.getAWSSecretKey creds)))
 
 (defn configure-from-temp
   [ctx creds]
