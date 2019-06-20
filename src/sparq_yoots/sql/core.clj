@@ -1,4 +1,5 @@
 (ns sparq-yoots.sql.core
+  (:require [taoensso.timbre :as timbre :refer [info infof]])
   (:import [org.apache.spark.sql functions
                                  SQLContext
                                  Dataset
@@ -14,7 +15,7 @@
 ;; -  Col Functions  -
 ;; ===================
 
-(defn col-array
+(defn #^Column col-array
   [xs]
   (into-array Column xs))
 
@@ -23,29 +24,42 @@
   (let [c (func name)]
     (if as (.as c as) c)))
 
-#_(defn ^Column col
-  [^String name & {:keys [as]
-                   :or {as nil}}]
-  (let [c (Column. name)]
-    (if as (.as c as) c)))
-
-#_(defn ^Column lit
-  [^String name & {:keys [as]
-                   :or {as nil}}]
-  (let [c (functions/lit name)]
-    (if as (.as c as) c)))
-
 (defn ^Column col
   [^String name & {:keys [as]
                    :or {as nil}}]
-  (-col name #(Column. %) :as as))
+  (-col name #(Column. %) as))
 
 (defn ^Column lit
   [^String name & {:keys [as]
                    :or {as nil}}]
-  (-col name #(functions/lit %) :as as))
+  (-col name #(functions/lit %) as))
+
+(defn ^Column count
+  [^String name & {:keys [as]
+                   :or {as nil}}]
+  (-col name #(functions/count (col %)) as))
+
+(defn ^Column size
+  [^String name & {:keys [as]
+                   :or {as nil}}]
+  (-col name #(functions/size (col %)) as))
+
+(defn ^Column udf
+  [^String name alias & cols]
+  (.as (functions/callUDF name (col-array cols)) alias))
+
+(defn ^Column and
+  [& cols]
+  (reduce (fn [a x] (.and a x)) cols))
+
+(defn ^Column or
+  [& cols]
+  (reduce (fn [a x] (.or a x)) cols))
 
 
+;; =======================
+;; -  Dataset Functions  -
+;; =======================
 
 (defn ^Dataset filter
   [^Dataset df ^Column condition]
@@ -70,9 +84,9 @@
   (.sort df (col-array cols)))
 
 
-;; ==================
-;; -  Registration  -
-;; ==================
+;; ===================
+;; -  UDF Functions  -
+;; ===================
 
 ;; ---
 ;; Macro
@@ -107,6 +121,7 @@
   "Registers UDF function.
   `function` should include argument type hints."
   [^SQLContext sql-context ^String name ^java.io.Serializable func ^DataType ret-type]
+  (infof "Registering <%s>UDF[%s][%s]" ret-type name func)
   (-> sql-context
       (.udf)
       (.register name func ret-type)))

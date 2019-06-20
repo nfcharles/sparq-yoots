@@ -3,7 +3,7 @@
 [![codecov](https://codecov.io/gh/nfcharles/sparq-yoots/branch/master/graph/badge.svg)](https://codecov.io/gh/nfcharles/sparq-yoots)
 [![Clojars Project](https://img.shields.io/clojars/v/sparq-yoots.svg)](https://clojars.org/sparq-yoots)
 
-A simple Clojure library designed to facilitate easier integration w/ spark. Contains handy utilities, wrappers, functional patterns, etc.  This is NOT a fully featured clojure DSL.  Some features include easy schema configuration and data loading.
+A simple Clojure library designed to facilitate easier integration w/ spark. Contains handy utilities, wrappers, functional patterns, etc.  This is NOT a fully featured clojure DSL.  Some features include easy schema configuration, data loading and UDF generation.
 
 ```clj
 [sparq-yoots "0.1.0"]
@@ -70,7 +70,7 @@ A simple Clojure library designed to facilitate easier integration w/ spark. Con
 ```clojure
 (ns example.s3
   (:require [sparq-yoots.configuration.s3 :as sparq.s3])
-  (import [com.amazonaws.auth DefaultAWSCredentialsProviderChain])
+  (:import [com.amazonaws.auth DefaultAWSCredentialsProviderChain])
   (:gen-class))
 
 
@@ -106,12 +106,13 @@ A simple Clojure library designed to facilitate easier integration w/ spark. Con
 
 ```clojure
 (ns examples.functions
-  (:require [sparq-yoots.core :as sparq.core])
+  (:require [sparq-yoots.sql.core :as sparq.sql])
   (:gen-class))
 
 
-(def foo (sparq.core/gen-udf (fn [a b c] (+ a b c)) 3 DataTypes/IntegerType))
-;;                                                  ^ function arity
+;; UDF generation macro.  Creates UDF of specified type/arity.
+(def foo (sparq.sql/gen-udf (fn [a b c] (+ a b c)) 3 DataTypes/IntegerType))
+;;                                                 ^ function arity
 ```
 
 #### Registration
@@ -119,11 +120,11 @@ A simple Clojure library designed to facilitate easier integration w/ spark. Con
 ```clojure
 (ns examples.driver
   (:require [examples.functions :as func]
-            [sparq-yoots.core :as sparq.core])
+            [sparq-yoots.sql.core :as sparq.sql])
   (:gen-class))
 
 
-(sparq.core/register-function sql-ctx "foo" func/foo DataTypes/IntegerType)
+(sparq.sql/register-function sql-ctx "foo" func/foo DataTypes/IntegerType)
 
 ...
 ```

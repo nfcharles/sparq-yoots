@@ -1,6 +1,9 @@
 (ns sparq-yoots.sql.types
   (:require [taoensso.timbre :as timbre :refer [infof debugf]])
-  (:import  [org.apache.spark.sql.types StructType
+  (:import  [org.apache.spark.sql.types ArrayType
+                                        DecimalType
+                                        MapType
+                                        StructType
                                         StructField
                                         DataTypes
                                         DataType]))
@@ -43,9 +46,27 @@
     :string    DataTypes/StringType
     :timestamp DataTypes/TimestampType))
 
+(defn array-type
+  (^ArrayType [v-type]
+    (DataTypes/createArrayType (v-type types)))
+  (^ArrayType [v-type has-null]
+    (DataTypes/createArrayType (v-type types) has-null)))
+
+(defn map-type
+  (^MapType [k-type v-type]
+    (DataTypes/createMapType (k-type types) (v-type types)))
+  (^MapType [k-type v-type has-null]
+    (DataTypes/createMapType (k-type types) (v-type types) has-null)))
+
+(defn decimal-type
+  (^DecimalType []
+    (DataTypes/createDecimalType))
+  (^DecimalType [precision scale]
+    (DataTypes/createDecimalType precision scale)))
+
 
 ;; ---
-;; - Type parsers
+;; - Configuration type parsers
 ;; ---
 
 (defn ^DataType parse-complex
