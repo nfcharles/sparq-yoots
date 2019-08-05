@@ -24,9 +24,9 @@
 
 (defn load-dataframe
   "Loads dataframe from specification."
-  [sql-ctx path specs & {:keys [fmt]
-                         :or {fmt (:default sparq.const/read)}}]
-  (load-dataframe-from-schema sql-ctx path (sparq.sql.types/struct-type specs) fmt))
+  [sql-ctx path colspecs & {:keys [fmt]
+                            :or {fmt (:default sparq.const/read)}}]
+  (load-dataframe-from-schema sql-ctx path (sparq.sql.types/parse-colspecs colspecs) fmt))
 
 (defn load-row-rdd
   "Loads row rdd"

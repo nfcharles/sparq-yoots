@@ -44,9 +44,20 @@
                    :or {as nil}}]
   (-col name #(functions/size (col %)) as))
 
-(defn ^Column udf
-  [^String name alias & cols]
-  (.as (functions/callUDF name (col-array cols)) alias))
+(defn ^Column date_add
+  [^String name days & {:keys [as]
+                        :or {as nil}}]
+  (-col name #(functions/date_add (col %) days) as))
+
+(defn ^Column date_sub
+  [^String name days & {:keys [as]
+                        :or {as nil}}]
+  (-col name #(functions/date_sub (col %) days) as))
+
+(defn ^Column date_format
+  [^String name fmt & {:keys [as]
+                       :or {as nil}}]
+  (-col name #(functions/date_format (col %) fmt) as))
 
 (defn ^Column and
   [& cols]
@@ -55,6 +66,20 @@
 (defn ^Column or
   [& cols]
   (reduce (fn [a x] (.or a x)) cols))
+
+
+;; ---
+;; - Generic caller: UDF and built-in functions
+;; ---
+
+(defn ^Column udf
+  [^String name as & cols]
+  (.as (functions/callUDF name (col-array cols)) as))
+
+(defn ^Column call
+  [^Column c func as & args]
+  #_(infof "COL=%s, ARGS=%s" c args)
+  (.as (apply func c args) as))
 
 
 ;; =======================
@@ -70,6 +95,10 @@
   "Select expressions"
   (let [#^Column xs (col-array cols)]
     (.select df xs)))
+
+(defn collect
+  [^Dataset df]
+  (.collect df))
 
 (defn ^RelationalGroupedDataset groupby
   [^Dataset df & cols]

@@ -1,33 +1,38 @@
 (ns sparq-yoots.sql.types
   (:require [taoensso.timbre :as timbre :refer [infof debugf]])
-  (:import  [org.apache.spark.sql.types ArrayType
-                                        DecimalType
-                                        MapType
-                                        StructType
-                                        StructField
-                                        DataTypes
-                                        DataType]))
+  (:import [org.apache.spark.sql.types DecimalType
+                                       ArrayType
+                                       MapType
+                                       StructType
+                                       StructField
+                                       DataTypes]))
 
 
+
+;; ============
+;; -  Errors  -
+;; ============
+
+(defn notype
+  [_type]
+  (format "Unsupported type: %s" _type))
+
+(defn unsupported-type-error
+  [_type]
+  (throw (java.lang.Exception. (notype _type))))
+
+(defn parse-error
+  [& msgs]
+  (let [xs (cons "Parse Error" msgs)]
+    (throw (java.lang.Exception. (clojure.string/join ".  " xs)))))
+
+
+;; ======================
+;; -  Type Definitions  -
+;; ======================
 
 ;; ---
-;; - Util
-;; ---
-
-(defn invalid-type
-  (^String [_type]
-    (format "Typespec parse error. '%s' unexpected." _type))
-  (^String [_type msg]
-    (format "Typespec parse error. '%s' unexpected. %s." _type msg)))
-
-(defn nullable?
-  [nullable]
-  "Defaults to true if nullable is not specified in configuration"
-  (or (nil? nullable) nullable))
-
-
-;; ---
-;; - Type defs
+;; - Simple Types
 ;; ---
 
 (def types
@@ -46,74 +51,86 @@
     :string    DataTypes/StringType
     :timestamp DataTypes/TimestampType))
 
-(defn array-type
-  (^ArrayType [v-type]
-    (DataTypes/createArrayType (v-type types)))
-  (^ArrayType [v-type has-null]
-    (DataTypes/createArrayType (v-type types) has-null)))
-
-(defn map-type
-  (^MapType [k-type v-type]
-    (DataTypes/createMapType (k-type types) (v-type types)))
-  (^MapType [k-type v-type has-null]
-    (DataTypes/createMapType (k-type types) (v-type types) has-null)))
-
-(defn decimal-type
-  (^DecimalType []
-    (DataTypes/createDecimalType))
-  (^DecimalType [precision scale]
-    (DataTypes/createDecimalType precision scale)))
-
 
 ;; ---
-;; - Configuration type parsers
+;; - Complex Types
 ;; ---
 
-(defn ^DataType parse-complex
+(defn nullable?
+  [nullable]
+  "Defaults to true if nullable is not specified in configuration"
+  (or (nil? nullable) nullable))
+
+(defn parse-decimal-type
   [spec]
-  (if (vector? spec)
-    (let [[_type _] spec]
-      (condp = _type
-        :array
-          (let [[_ v null] spec]
-            (DataTypes/createArrayType (parse-complex v) (nullable? null)))
-        :map
-          (let [[_ k v null] spec]
-            (if-let [datatype (k types)]
-              (DataTypes/createMapType (k types) (parse-complex v) (nullable? null))
-              (throw (java.lang.Exception. (invalid-type k "Unsupported type")))))
-        :decimal
-         (let [[_ prec scale] spec]
-            (if (not-any? nil? [prec scale])
-              (DataTypes/createDecimalType prec scale)
-              (DataTypes/createDecimalType)))
-        (throw (java.lang.Exception. (invalid-type _type "Unsupported complex type")))))
-    (if-let [v (spec types)]
-      v
-      (throw (java.lang.Exception. (invalid-type spec "Unsupported type"))))))
+  (let [[_ prec scale] spec]
+    (if (not-any? nil? [prec scale])
+      (DataTypes/createDecimalType prec scale)
+      (DataTypes/createDecimalType))))
 
-(defn ^StructField parse
-  "Parse column type specification"
-  [colspec]
-  (let [{:keys [name typespec null]} colspec]
-    (cond
-      (vector? typespec)
-        (DataTypes/createStructField name (parse-complex typespec) (nullable? null))
-      (keyword? typespec)
-        (if-let [datatype (typespec types)]
-          (DataTypes/createStructField name datatype (nullable? null))
-          (throw (java.lang.Exception. (invalid-type typespec "Unsupported type"))))
-      :else (throw (java.lang.Exception. (invalid-type typespec "keyword or vector expected"))))))
+(defn parse-array-type
+  [spec parser]
+  #_(debugf "<parse-array>[%s,%s]" spec parser)
+  (let [[_ v null] spec]
+    (DataTypes/createArrayType (parser v) (nullable? null))))
 
-(defn ^StructType struct-type
-  "Builds StructType from columns names and types."
+(defn parse-map-type
+  [spec parser]
+  (let [[_ k v null] spec
+        t (k types)]
+    (if t
+      (DataTypes/createMapType t (parser v) (nullable? null))
+      (parse-error (format "Map key[%s] must be one of: %s" t (keys types))))))
+
+(defn parse-struct-field
+  [name _type null]
+  (DataTypes/createStructField name _type (nullable? null)))
+
+(defn parse-struct-type
+  [colspecs parser]
+  (debugf "COLSPECS.COUNT=%d" (count colspecs))
+  (loop [xs colspecs
+         acc []]
+    (if-let [colspec (first xs)]
+      (let [{:keys [name typespec null]} colspec]
+        (debugf "NAME=%s, TYPESPEC=%s, NULL=%s" name typespec null)
+        (recur (rest xs) (conj acc (parse-struct-field name (parser typespec) null))))
+      (DataTypes/createStructType (into-array StructField acc)))))
+
+
+;; ---
+;; - General Type Parser
+;; ---
+
+(defn parse-type
+  [typespec]
+  (cond
+    ;; --- Parse simple type ---
+    (keyword? typespec)
+      (if-let [_type (typespec types)]
+        _type
+        (unsupported-type-error typespec))
+
+    ;; --- Parse complex type ---
+    (vector? typespec)
+      (let [[_type _] typespec]
+        (condp = _type
+          :decimal (parse-decimal-type typespec)
+          :array   (parse-array-type typespec parse-type)
+          :map     (parse-map-type typespec parse-type)
+          (parse-error (format "Unsupported complex type:%s" _type) "Must be :decimal, :array or :map")))
+
+    ;; --- Parse struct type ---
+    (list? typespec)
+      ;; In this case, typespec is colspecs [{:name _ :typespec _ :null _} ...]
+      (parse-struct-type typespec parse-type)
+    :else (parse-error "Unexpected form")))
+
+
+;; ---
+;; - Top Level Parser
+;; ---
+
+(defn parse-colspecs
   [colspecs]
-  (let [xform (fn [xs]
-                (into-array StructField xs))]
-    (loop [xs colspecs
-           acc []]
-      (if-let [cs (first xs)]
-        (let [{:keys [name typespec _]} cs]
-          (infof "Adding <%s>%s to struct" typespec name)
-          (recur (rest xs) (conj acc (parse cs))))
-        (DataTypes/createStructType (xform acc))))))
+  (parse-struct-type colspecs parse-type))
