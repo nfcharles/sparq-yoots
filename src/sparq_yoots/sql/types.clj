@@ -124,7 +124,7 @@
     (list? typespec)
       ;; In this case, typespec is colspecs [{:name _ :typespec _ :null _} ...]
       (parse-struct-type typespec parse-type)
-    :else (parse-error "Unexpected form")))
+    :else (parse-error (format "Unexpected form: %s" (type typespec)))))
 
 
 ;; ---

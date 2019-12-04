@@ -6,7 +6,7 @@
 A simple Clojure library designed to facilitate easier integration w/ spark. Contains handy utilities, wrappers, functional patterns, etc.  This is NOT a fully featured clojure DSL.  Some features include easy schema configuration, data loading and UDF generation.
 
 ```clj
-[sparq-yoots "0.1.0"]
+[sparq-yoots "0.2.0"]
 ```
 
 ## Usage
@@ -102,17 +102,15 @@ A simple Clojure library designed to facilitate easier integration w/ spark. Con
 
 ### UDFs
 
-#### Generation
-
 ```clojure
 (ns examples.functions
-  (:require [sparq-yoots.sql.core :as sparq.sql])
+  (:import [sparq_yoots.functions UDF3 UDF5 UDF7])
   (:gen-class))
 
 
-;; UDF generation macro.  Creates UDF of specified type/arity.
-(def foo (sparq.sql/gen-udf (fn [a b c] (+ a b c)) 3 DataTypes/IntegerType))
-;;                                                 ^ function arity
+;; Create UDF3
+(def foo (UDF3. (fn ^DoubleType [^DoubleType a ^DoubleType b ^DoubleType c] (* a b c))))
+;;
 ```
 
 #### Registration
@@ -124,7 +122,7 @@ A simple Clojure library designed to facilitate easier integration w/ spark. Con
   (:gen-class))
 
 
-(sparq.sql/register-function sql-ctx "foo" func/foo DataTypes/IntegerType)
+(sparq.sql/register-function sql-ctx "foo" func/foo DataTypes/DoubleType)
 
 ...
 ```

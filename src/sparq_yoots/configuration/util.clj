@@ -10,7 +10,7 @@
   "Ensures configuration list is even number of entries"
   [confs configure]
   (if (= 1 (mod (count confs) 2))
-    (throw (java.lang.Exception. (format "Spark configuration requries key/value pairs! %s" confs)))
+    (throw (java.lang.Exception. (format "Spark configuration requries key/value pairs! %s" (seq confs))))
     (do
       (info "Configuring spark...")
       (configure))))
