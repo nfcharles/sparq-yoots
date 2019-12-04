@@ -37,7 +37,8 @@
 (defmacro gen-udf
   [arity]
   (let [fn           (gensym "udf-fn")
-        fn-with-type (with-meta fn {:tag clojure.lang.IFn})]
+        fn-with-type (with-meta fn {:tag clojure.lang.IFn})
+        this         (symbol "this")]
     `(do
       (gen-class
         :name ~(format "sparq_yoots.functions.UDF%d" arity)
@@ -46,22 +47,10 @@
         :prefix ~(format "udf%d-" arity)
         :constructors {[clojure.lang.IFn] [clojure.lang.IFn]})
       (defn ~(symbol (format "udf%d-call" arity))
-        ~(gen-arg-vector arity :init [(symbol "this")] :with-type-hint Object)
-        (let [~fn-with-type (.getFunction ~(symbol "this"))]
+        ~(gen-arg-vector arity :init [this] :with-type-hint Object)
+        (let [~fn-with-type (.getFunction ~this)]
           (~fn ~@(gen-arg-vector arity)))))))
 
-
-
-;; ===
-;; - UDF Template Test
-;; ===
-
-(comment
-(set! *print-meta* true)
-(clojure.pprint/pprint (macroexpand '(gen-udf 1)))
-(clojure.pprint/pprint (macroexpand '(gen-udf 4)))
-(clojure.pprint/pprint (macroexpand '(gen-udf 7)))
-)
 
 
 ;; ===
@@ -89,11 +78,16 @@
 (gen-udf 19)
 
 
-#_(defn ser-deser-test
-  [udf]
-  (write-output udf)
-  (read-input))
+;; ===
+;; - UDF Template Test
+;; ===
 
+(comment
+(set! *print-meta* true)
+(clojure.pprint/pprint (macroexpand '(gen-udf 1)))
+(clojure.pprint/pprint (macroexpand '(gen-udf 4)))
+(clojure.pprint/pprint (macroexpand '(gen-udf 7)))
+)
 
 
 ;; ===
@@ -106,5 +100,4 @@
     (info (sparq_yoots.functions.UDF1. test-fn))
     (info (sparq_yoots.functions.UDF3. test-fn))
     (info (sparq_yoots.functions.UDF9. test-fn))
-    (infof "RET=%d" (.call (sparq_yoots.functions.UDF4. test-fn) 1 2 3 4))
-    #_(ser-deser-test udf)))
+    (infof "RET=%d" (.call (sparq_yoots.functions.UDF4. test-fn) 1 2 3 4))))
