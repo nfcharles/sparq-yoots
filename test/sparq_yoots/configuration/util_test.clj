@@ -3,8 +3,7 @@
             [sparq-yoots.configuration.util :refer :all]))
 
 
-;; TODO: fix me: these tests fail when they should not.
-(def msg #"^Spark configuration requires key/value pairs!\s.*$")
+(def msg #"Spark configuration requires key/value pairs!\s.*")
 
 (deftest conf-test-errors
   (testing "Ensures key/value pair correct configuration"

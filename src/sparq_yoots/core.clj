@@ -23,12 +23,6 @@
       (.format fmt)
       (.load path)))
 
-(defn load-dataframe
-  "Loads dataframe from specification."
-  [sql-ctx path colspecs & {:keys [fmt]
-                            :or {fmt (:default sparq.const/read)}}]
-  (load-dataframe-from-schema sql-ctx path (sparq.sql.types/parse-colspecs colspecs) fmt))
-
 (defn load-dataframe-ns
   "Loads dataframe with defined schema."
   [^SQLContext sql-ctx ^String path & {:keys [^String fmt]
@@ -38,6 +32,14 @@
       (.read)
       (.format fmt)
       (.load path)))
+
+(defn load-dataframe
+  "Loads dataframe from specification."
+  [sql-ctx path colspecs & {:keys [fmt]
+                            :or {fmt (:default sparq.const/read)}}]
+  (if colspecs
+    (load-dataframe-from-schema sql-ctx path (sparq.sql.types/parse-colspecs colspecs) fmt)
+    (load-dataframe-ns sql-ctx path :fmt fmt)))
 
 (defn load-row-rdd
   "Loads row rdd"
