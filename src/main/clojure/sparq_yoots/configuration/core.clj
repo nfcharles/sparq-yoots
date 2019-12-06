@@ -16,7 +16,7 @@
   (infof "SPARK_MASTER=%s" master)
   (infof "SPARK_APP_NAME=%s" app-name)
   (-> (conf.util/set-spark-conf conf spark-confs)
-      (.setAppName app-name)  
+      (.setAppName app-name)
       (.setMaster master)
       (JavaSparkContext.)))
 
@@ -36,7 +36,7 @@
     (if with-hive
       (-> builder
           (.enableHiveSupport)
-          (.config (:dyn-partition-mode sparq.consts/hive) "nonstrict")	  
+          (.config (:dyn-partition-mode sparq.consts/hive) "nonstrict")
           (.config (:dyn-partition sparq.consts/hive)      "true")
           (.getOrCreate))
       (.getOrCreate builder))))

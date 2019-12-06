@@ -8,13 +8,25 @@
             [lein-shell "0.5.0"]
             [lein-ancient "0.6.15"]
             [lein-changelog "0.3.2"]]
-  :profiles {:dev {:aot :all
+  :profiles {:provided {:dependencies [[org.clojure/clojure "1.8.0"]
+                                       [org.apache.spark/spark-core_2.11 "2.3.3" :exclusions [commons-codec]]
+                                       [org.apache.spark/spark-sql_2.11 "2.3.3" :exclusions [commons-codec]]]}
+             :uberjar {:aot :all
+                       :dependencies [[org.clojure/clojure "1.8.0"]
+                                      [org.apache.spark/spark-core_2.11 "2.3.3" :exclusions [commons-codec]]
+                                      [org.apache.spark/spark-sql_2.11 "2.3.3" :exclusions [commons-codec]]]}
+             :dev {:aot :all
                    :dependencies [[org.clojure/clojure "1.8.0"]
                                   [org.apache.spark/spark-core_2.11 "2.3.3" :exclusions [commons-codec]]
                                   [org.apache.spark/spark-sql_2.11 "2.3.3" :exclusions [commons-codec]]]}}
+  :aot :all
+  :target-path "target/%s/"
   :deploy-repositories [["releases" :clojars]]
   :aliases {"update-readme-version" ["shell" "sed" "-i" "s/\\\\[sparq-yoots \"[0-9.]*\"\\\\]/[sparq-yoots \"${:version}\"]/" "README.md"]}
-  :java-source-paths ["src/java"]
+  :java-source-paths ["src/main/java"]
+  :source-paths ["src/main/clojure"])
+
+(comment
   :release-tasks [["shell" "git" "diff" "--exit-code"]
                   ["change" "version" "leiningen.release/bump-version"]
                   ["change" "version" "leiningen.release/bump-version" "release"]
