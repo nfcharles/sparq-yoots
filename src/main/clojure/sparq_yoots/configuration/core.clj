@@ -9,20 +9,20 @@
 
 (defn ^JavaSparkContext spark-context
   "Initializes spark context"
-  [conf & {:keys [app-name master spark-confs with-hive]
+  [conf & {:keys [app-name master spark-confs]
            :or {app-name    "app.driver"
                 master      "local[*]"
                 spark-confs []}}]
   (infof "SPARK_MASTER=%s" master)
   (infof "SPARK_APP_NAME=%s" app-name)
   (-> (conf.util/set-spark-conf conf spark-confs)
-      (.setAppName app-name)  
+      (.setAppName app-name)
       (.setMaster master)
       (JavaSparkContext.)))
 
 (defn ^SparkSession spark-session
   "Initializes spark session"
-  [& {:keys [app-name master spark-confs]
+  [& {:keys [app-name master spark-confs with-hive]
       :or {app-name    "app.driver"
            master      "local[*]"
            spark-confs []
@@ -36,7 +36,7 @@
     (if with-hive
       (-> builder
           (.enableHiveSupport)
-          (.config (:dyn-partition-mode sparq.consts/hive) "nonstrict")	  
+          (.config (:dyn-partition-mode sparq.consts/hive) "nonstrict")
           (.config (:dyn-partition sparq.consts/hive)      "true")
           (.getOrCreate))
       (.getOrCreate builder))))
