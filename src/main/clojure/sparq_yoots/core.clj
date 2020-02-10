@@ -13,6 +13,10 @@
 ;; -  Loaders  -
 ;; =============
 
+;; ---
+;; - With schema
+;; ---
+
 (defn load-dataframe-from-schema
   "Loads dataframe with defined schema."
   [^SQLContext sql-ctx ^String path ^StructType schema ^String fmt]
@@ -22,6 +26,11 @@
       (.schema schema)
       (.format fmt)
       (.load path)))
+
+
+;; ---
+;; - Without schema
+;; ---
 
 (defn load-dataframe-ns
   "Loads dataframe with defined schema."
@@ -41,6 +50,43 @@
     (load-dataframe-from-schema sql-ctx path (sparq.sql.types/parse-colspecs colspecs) fmt)
     (load-dataframe-ns sql-ctx path :fmt fmt)))
 
+
+;; ---
+;; - Variable path load - optimizes partition scan
+;; ---
+
+;; TODO: Consolidate this w/ above dataframe methods and unify interface, next version
+
+(defn optional-conf
+  [obj action predicate]
+  (if predicate
+    (action obj) obj))
+
+(defn variable-conf
+  [obj a1 a2 predicate]
+  (if predicate
+    (a1 obj) (a2 obj)))
+
+(defn load-dataframe-sources
+  "Loads dataframe with defined schema."
+  [^SQLContext sql-ctx ^String path & {:keys [^StructType schema ^String fmt paths]
+                                       :or {^StructType schema nil
+                                            ^String fmt (:default sparq.const/read)
+                                            paths nil}}]
+  (infof "DATAFRAME_SOURCE=%s" path)
+  (if paths
+    (infof "PARTITIONS=%s" paths))
+  (-> sql-ctx
+      (.read)
+      (optional-conf #(.schema %1 schema) schema)
+      (.format fmt)
+      (optional-conf #(.option %1 "basePath" path) paths)
+      (variable-conf #(.load %1 (into-array String paths)) #(.load %1 path) paths)))
+
+
+;; ---
+;; - Row RDD
+;; ---
 (defn load-row-rdd
   "Loads row rdd"
   [^SQLContext sql-ctx ^String path & {:keys [^String fmt]
@@ -50,6 +96,10 @@
       (.format fmt)
       (.load path)))
 
+;; ---
+;; - RDD to Dataframe
+;; ---
+
 (defn rdd->dataframe
   [^SQLContext sql-ctx ^JavaRDD rdd ^StructType struct-type]
   (let [r (JavaRDD/toRDD rdd)]
@@ -57,18 +107,17 @@
     (.createDataFrame sql-ctx r struct-type)))
 
 
-;; ---
+;; ===
 ;; - Writer Utils
-;; ---
+;; ===
 
 (defn write
   "Persists dataframe in parquet format."
   [df output & {:keys [save-mode with-partitions]
                 :or {save-mode nil
                      with-partitions nil}}]
-  (let [optional-action (fn [dfw action args] (if args (action dfw args) dfw))]
-    (-> df
-        (.write)
-        (optional-action #(.mode %1 %2) save-mode)
-        (optional-action #(.partitionBy %1 (into-array String %2)) with-partitions)
-        (.parquet output))))
+  (-> df
+      (.write)
+      (optional-conf #(.mode %1 save-mode) save-mode)
+      (optional-conf #(.partitionBy %1 (into-array String with-partitions)) with-partitions)
+      (.parquet output)))

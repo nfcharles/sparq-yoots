@@ -53,7 +53,8 @@
         colspec3 {:name "baz" :typespec [:array :string]}
         colspec4 {:name "oof" :typespec [:map :string :int]}
         colspec5 {:name "rab" :typespec [:array [:array :string] false]}
-        colspec6 {:name "zab" :typespec [:map :string [:array :string]]}]
+        colspec6 {:name "zab" :typespec [:map :string [:array :string]]}
+	colspec7 {:name "wtf" :typespec (list {:name "foo" :typespec :string})}]
     (testing "Simple"
       (is (= (.toString (-parse-struct-field colspec1))
              "StructField(foo,IntegerType,false)"))
@@ -66,11 +67,13 @@
       (is (= (.toString (-parse-struct-field colspec5))
              "StructField(rab,ArrayType(ArrayType(StringType,true),false),true)"))
       (is (= (.toString (-parse-struct-field colspec6))
-             "StructField(zab,MapType(StringType,ArrayType(StringType,true),true),true)")))
+             "StructField(zab,MapType(StringType,ArrayType(StringType,true),true),true)"))
+      (is (= (.toString (-parse-struct-field colspec7))
+             "StructField(wtf,StructType(StructField(foo,StringType,true)),true)")))
     (testing "Complex"
-      (let [colspecs (list colspec1 colspec2 colspec3 colspec4 colspec5 colspec6)]
+      (let [colspecs (list colspec1 colspec2 colspec3 colspec4 colspec5 colspec6 colspec7)]
         (is (= (.toString (parse-colspecs colspecs))
-               "StructType(StructField(foo,IntegerType,false), StructField(bar,StringType,true), StructField(baz,ArrayType(StringType,true),true), StructField(oof,MapType(StringType,IntegerType,true),true), StructField(rab,ArrayType(ArrayType(StringType,true),false),true), StructField(zab,MapType(StringType,ArrayType(StringType,true),true),true))"))))))
+               "StructType(StructField(foo,IntegerType,false), StructField(bar,StringType,true), StructField(baz,ArrayType(StringType,true),true), StructField(oof,MapType(StringType,IntegerType,true),true), StructField(rab,ArrayType(ArrayType(StringType,true),false),true), StructField(zab,MapType(StringType,ArrayType(StringType,true),true),true), StructField(wtf,StructType(StructField(foo,StringType,true)),true))"))))))
 
 
 ;; TODO: test errors
