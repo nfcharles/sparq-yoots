@@ -74,11 +74,11 @@ class SerializableSparkFunctionContext implements Serializable {
 	String namespace = "<NS>";
 	IFn fn = null;
 	try {
-	    System.out.printf("Deser %s\n", this.getClass().getName());
+	    //System.out.printf("Deser %s\n", this.getClass().getName());
 	    srcName = (String) in.readObject();
 	    namespace = parseNamespace(srcName);
 
-	    System.out.printf("Loading namespace: %s\n", namespace);
+	    //System.out.printf("Loading namespace: %s\n", namespace);
 	    loadNamespace(namespace);
 
 	    fn = (IFn) in.readObject();
@@ -97,9 +97,9 @@ class SerializableSparkFunctionContext implements Serializable {
     protected void write(ObjectOutputStream out) {
 	String srcName = "<SRC>";
 	try {
-	    System.out.printf("Ser %s\n", this.getClass().getName());
+	    //System.out.printf("Ser %s\n", this.getClass().getName());
 	    srcName = getSourceName(this.fn);
-	    System.out.printf("Serializing %s\n", srcName);
+	    //System.out.printf("Serializing %s\n", srcName);
 
 	    out.writeObject(srcName);
 	    out.writeObject(this.fn);

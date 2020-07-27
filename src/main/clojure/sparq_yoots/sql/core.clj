@@ -125,6 +125,23 @@
   [^Dataset df ^Column join-cond]
   (.join df join-cond "inner"))
 
+(defn ^Dataset drops
+  [df & cols]
+  (loop [xs cols
+         acc df]
+    (if-let [col (first xs)]
+      (recur (rest xs) (.drop acc col))
+      acc)))
+
+(defn ^Dataset renames
+  [df cols]
+  (loop [xs cols
+         acc df]
+    (if-let [col (first xs)]
+      (let [[from to] col]
+       (infof "RENAME: %s -> %s" from to)
+       (recur (rest xs) (.withColumnRenamed acc from to)))
+      acc)))
 
 
 ;; ===================

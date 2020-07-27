@@ -5,7 +5,7 @@
             [taoensso.timbre :as timbre :refer [infof debugf]])
   (:import [org.apache.spark.api.java JavaRDD]
            [org.apache.spark.sql.types StructType]
-           [org.apache.spark.sql SQLContext]))
+           [org.apache.spark.sql SparkSession SQLContext Dataset RowFactory Row]))
 
 
 
@@ -105,6 +105,20 @@
   (let [r (JavaRDD/toRDD rdd)]
     (infof "Converted %s to DataFrame" r)
     (.createDataFrame sql-ctx r struct-type)))
+
+
+
+;; ---
+;; - Dataframe from Sequence
+;; ---
+
+(defn ^Dataset seq->dataframe
+  [^SparkSession session rows colspecs]
+  (loop [xs rows
+         acc []]
+   (if-let [x (first xs)]
+     (recur (rest xs) (conj acc (RowFactory/create (object-array x))))
+     (.createDataFrame session acc (sparq.sql.types/parse-colspecs colspecs)))))
 
 
 ;; ===
