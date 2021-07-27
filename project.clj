@@ -1,4 +1,4 @@
-(defproject nfcharles/sparq-yoots "0.3.0"
+(defproject nfcharles/sparq-yoots "0.3.1"
   :description "Spark configuration utilities"
   :url "https://github.com/nfcharles/sparq-yoots"
   :license {:name "Eclipse Public License"

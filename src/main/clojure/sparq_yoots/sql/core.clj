@@ -7,17 +7,21 @@
                                  RowFactory
                                  Row
                                  Column]
-           [org.apache.spark.sql.types DataType]))
+           [org.apache.spark.sql.catalyst.expressions GenericRowWithSchema]
+           [org.apache.spark.sql.types DataType StructType]
+           [org.apache.spark.sql.expressions Window]))
 
+
+
+
+(defn invalid-column-type-exception
+  [x]
+  (java.lang.Exception. (format "Invalid column type: %s" (type x))))
 
 
 ;; ===================
 ;; -  Col Functions  -
 ;; ===================
-
-(defn #^Column col-array
-  [xs]
-  (into-array Column xs))
 
 (defn ^Column -col
   [^String name func as]
@@ -29,10 +33,28 @@
                    :or {as nil}}]
   (-col name #(Column. %) as))
 
+(defn #^Column col-array
+  [xs]
+  (into-array Column xs))
+
+(defn #^Column column-array
+  [c & cols]
+  (loop [xs (concat [c] cols)
+         acc []]
+    (if-let [x (first xs)]
+      (recur (rest xs) (conj acc (col x)))
+      (col-array acc))))
+
+(defn #^String string-array
+  [xs]
+  (into-array String xs))
+
 (defn ^Column lit
-  [^String name & {:keys [as]
-                   :or {as nil}}]
-  (-col name #(functions/lit %) as))
+  [^String name & {:keys [cast as]
+                   :or {cast nil
+                        as nil}}]
+  (let [x (-col name #(functions/lit %) as)]
+    (if cast (.cast x cast) x)))
 
 (defn ^Column count
   [^String name & {:keys [as]
@@ -43,6 +65,16 @@
   [^String name & {:keys [as]
                    :or {as nil}}]
   (-col name #(functions/size (col %)) as))
+
+(defn ^Column array
+  [col & cols]
+  (infof "array.COL_TYPE=%s" (type col))
+  (condp = (type col)
+    String (let [#^String xs (string-array cols)]
+             (functions/array col xs))
+    Column (let [#^Column xs (col-array (concat [col] cols))]
+             (functions/array xs))
+    :else (throw (invalid-column-type-exception col))))
 
 (defn ^Column date_add
   [^String name days & {:keys [as]
@@ -72,6 +104,18 @@
                    :or {as nil}}]
   (-col expr #(functions/expr %) as))
 
+(defn ^Column over
+  [^String _expr ^Window window & {:keys [as]
+                                :or {as nil}}]
+  (let [ret (.over (expr _expr) window)]
+    (if as
+      (.alias ret as)
+      ret)))
+
+(defn ^Column struct
+  [& cols]
+  (functions/struct (col-array cols)))
+
 
 ;; ---
 ;; - Generic caller: UDF and built-in functions
@@ -87,6 +131,114 @@
   (.as (apply func c args) as))
 
 
+;; ===================
+;; -  Row Functions  -
+;; ===================
+
+(defn ^GenericRowWithSchema row
+  [xs]
+  (RowFactory/create
+    (object-array xs)))
+
+
+(defn bool-col
+  [index ^StructType row & {:keys [nullable]
+                            :or {nullable true}}]
+  (if nullable
+    (if (not (.isNullAt row index))
+      (.getBoolean row index))
+    (.getBoolean row index)))
+
+(defn byte-col
+  [index ^StructType row & {:keys [nullable]
+                            :or {nullable true}}]
+  (if nullable
+    (if (not (.isNullAt row index))
+      (.getByte row index))
+    (.getByte row index)))
+
+(defn int-col
+  [index ^StructType row & {:keys [nullable]
+                            :or {nullable true}}]
+  (if nullable
+    (if (not (.isNullAt row index))
+      (.getInt row index))
+    (.getInt row index)))
+
+(defn long-col
+  [index ^StructType row & {:keys [nullable]
+                            :or {nullable true}}]
+  (if nullable
+    (if (not (.isNullAt row index))
+      (.getLong row index))
+    (.getLong row index)))
+
+(defn float-col
+  [index ^StructType row & {:keys [nullable]
+                            :or {nullable true}}]
+  (if nullable
+    (if (not (.isNullAt row index))
+      (.getFloat row index))
+    (.getFloat row index)))
+
+(defn double-col
+  [index ^StructType row & {:keys [nullable]
+                            :or {nullable true}}]
+  (if nullable
+    (if (not (.isNullAt row index))
+      (.getDouble row index))
+    (.getDouble row index)))
+
+(defn timestamp-col
+  [index ^StructType row & {:keys [nullable]
+                            :or {nullable true}}]
+  (if nullable
+    (if (not (.isNullAt row index))
+      (.getTimestamp row index))
+    (.getTimestamp row index)))
+
+(defn date-col
+  [index ^StructType row & {:keys [nullable]
+                            :or {nullable true}}]
+  (if nullable
+    (if (not (.isNullAt row index))
+      (.getDate row index))
+    (.getDate row index)))
+
+(defn list-col
+  [index ^StructType row & {:keys [nullable]
+                            :or {nullable true}}]
+  (if nullable
+    (if (not (.isNullAt row index))
+      (.getList row index))
+    (.getList row index)))
+
+(defn map-col
+  [index ^StructType row & {:keys [nullable]
+                            :or {nullable true}}]
+  (if nullable
+    (if (not (.isNullAt row index))
+      (.getMap row index))
+    (.getMap row index)))
+
+(defn struct-col
+  [index ^StructType row & {:keys [nullable]
+                            :or {nullable true}}]
+  (if nullable
+    (if (not (.isNullAt row index))
+      (.getStruct row index))
+    (.getStruct row index)))
+
+(defn string-col
+  [index ^StructType row & {:keys [nullable]
+                            :or {nullable true}}]
+  (if nullable
+    (if (not (.isNullAt row index))
+      (.getString row index))
+    (.getString row index)))
+
+
+
 ;; =======================
 ;; -  Dataset Functions  -
 ;; =======================
@@ -95,38 +247,16 @@
   [^Dataset df ^Column condition]
   (.filter df condition))
 
-(defn ^Dataset select
-  [^Dataset df & cols]
-  "Select expressions"
-  (let [#^Column xs (col-array cols)]
-    (.select df xs)))
+(defn ^Dataset aggregate
+  [^RelationalGroupedDataset df ^Column col & cols]
+  (.agg df col (col-array cols)))
 
 (defn collect
   [^Dataset df]
   (.collect df))
 
-(defn ^RelationalGroupedDataset groupby
-  [^Dataset df & cols]
-  (.groupBy df (col-array cols)))
-
-(defn ^Dataset aggregate
-  [^RelationalGroupedDataset df ^Column col & cols]
-  (.agg df col (col-array cols)))
-
-(defn ^Dataset sort
-  [^Dataset df & cols]
-  (.sort df (col-array cols)))
-
-(defn ^Dataset left-join
-  [^Dataset df ^Column join-cond]
-  (.join df join-cond "left"))
-
-(defn ^Dataset join
-  [^Dataset df ^Column join-cond]
-  (.join df join-cond "inner"))
-
 (defn ^Dataset drops
-  [df & cols]
+  [^Dataset df & cols]
   (loop [xs cols
          acc df]
     (if-let [col (first xs)]
@@ -134,7 +264,7 @@
       acc)))
 
 (defn ^Dataset renames
-  [df cols]
+  [^Dataset df cols]
   (loop [xs cols
          acc df]
     (if-let [col (first xs)]
@@ -142,6 +272,70 @@
        (infof "RENAME: %s -> %s" from to)
        (recur (rest xs) (.withColumnRenamed acc from to)))
       acc)))
+
+(defn drop-duplicates
+  [^Dataset df & cols]
+  (.dropDuplicates df (string-array cols)))
+
+(defn ^Dataset cache
+  [^Dataset df]
+  (.cache df))
+
+;; --------------------
+;; *** multimethods ***
+;; --------------------
+
+;; ---
+;; - SELECT
+;; ---
+
+(defn ^Dataset select
+  [^Dataset df col & cols]
+  (infof "select.COL_TYPE=%s" (type col))
+  (condp = (type col)
+    String (let [#^String xs (string-array cols)]
+             (.select df col xs))
+    Column (let [#^Column xs (col-array (concat [col] cols))]
+             (.select df xs))
+    :else (throw (invalid-column-type-exception col))))
+
+;; ---
+;; - GROUP BY
+;; ---
+
+(defn ^RelationalGroupedDataset groupby
+  [^Dataset df col & cols]
+  (infof "groupby.COL_TYPE=%s" (type col))
+  (condp = (type col)
+    String (let [#^String xs (string-array cols)]
+             (.groupBy df col xs))
+    Column (let [#^Column xs (col-array (concat [col] cols))]
+             (.groupBy df xs))
+    :else (throw (invalid-column-type-exception col))))
+
+;; ---
+;; - SORT
+;; ---
+
+(defn ^Dataset sort
+  [^Dataset df col & cols]
+  (infof "sort.COL_TYPE=%s" (type col))
+  (condp = (type col)
+    String (let [#^String xs (string-array cols)]
+             (.sort df col xs))
+    Column (let [#^Column xs (col-array (concat [col] cols))]
+             (.sort df xs))
+    :else (throw (invalid-column-type-exception col))))
+
+(defn sort-within-partitions
+  [^Dataset df col & cols]
+  (infof "sorth-within-partitions.COL_TYPE=%s" (type col))
+  (condp = (type col)
+    String (let [#^String xs (string-array cols)]
+             (.sortWithinPartitions df col xs))
+    Column (let [#^Column xs (col-array (concat [col] cols))]
+             (.sortWithinPartitions df xs))
+    :else (throw (invalid-column-type-exception col))))
 
 
 ;; ===================
