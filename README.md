@@ -1,7 +1,7 @@
 # sparq-yoots
 [![Build Status](https://travis-ci.com/nfcharles/sparq-yoots.svg?branch=master)](https://travis-ci.com/nfcharles/sparq-yoots)
 [![codecov](https://codecov.io/gh/nfcharles/sparq-yoots/branch/master/graph/badge.svg)](https://codecov.io/gh/nfcharles/sparq-yoots)
-[![Clojars Project](https://img.shields.io/clojars/v/sparq-yoots.svg)](https://clojars.org/sparq-yoots)
+[![Clojars Project](https://img.shields.io/clojars/v/org.clojars.nfcharles/sparq-yoots.svg)](https://clojars.org/org.clojars.nfcharles/sparq-yoots)
 
 A simple Clojure library designed to facilitate easier integration w/ spark. Contains handy utilities, wrappers, functional patterns, etc.  This is NOT a fully featured clojure DSL.  Some features include easy schema configuration, data loading and UDF generation.
 
