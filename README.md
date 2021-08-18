@@ -150,6 +150,12 @@ Convenience functions during UDF processing.
 (def FOO (partial sparq.sql/double-col 0))
 (def BAR (partial sparq.sql/bool-col   1))
 (def BAZ (partial sparq.sql/int-col    2))
+
+(let [foo (FOO spark-row-obj)
+      bar (BAR spark-row-obj)
+      baz (BAZ spark-row-obj)]
+  ...
+  )
 ```
 
 ## License
