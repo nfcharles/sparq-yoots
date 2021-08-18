@@ -1,4 +1,4 @@
-(defproject nfcharles/sparq-yoots "0.3.1"
+(defproject org.clojars.nfcharles/sparq-yoots "0.3.2"
   :description "Spark configuration utilities"
   :url "https://github.com/nfcharles/sparq-yoots"
   :license {:name "Eclipse Public License"
@@ -21,18 +21,7 @@
                                   [org.apache.spark/spark-sql_2.11 "2.2.3" :exclusions [commons-codec]]]}}
   :aot :all
   :target-path "target/%s/"
-  :deploy-repositories [["releases" :clojars]]
+  :deploy-repositories {"releases" {:url "https://repo.clojars.org" :creds :gpg}}
   :aliases {"update-readme-version" ["shell" "sed" "-i" "s/\\\\[sparq-yoots \"[0-9.]*\"\\\\]/[sparq-yoots \"${:version}\"]/" "README.md"]}
   :java-source-paths ["src/main/java"]
   :source-paths ["src/main/clojure"])
-
-(comment
-  :release-tasks [["shell" "git" "diff" "--exit-code"]
-                  ["change" "version" "leiningen.release/bump-version"]
-                  ["change" "version" "leiningen.release/bump-version" "release"]
-                  ["changelog" "release"]
-                  ["update-readme-version"]
-                  ["vcs" "commit"]
-                  ["vcs" "tag"]
-                  ["deploy"]
-                  ["vcs" "push"]])

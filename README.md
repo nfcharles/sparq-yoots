@@ -1,13 +1,10 @@
 # sparq-yoots
-[![Build Status](https://travis-ci.org/nfcharles/sparq-yoots.svg?branch=master)](https://travis-ci.org/nfcharles/sparq-yoots)
+[![Build Status](https://travis-ci.com/nfcharles/sparq-yoots.svg?branch=master)](https://travis-ci.com/nfcharles/sparq-yoots)
 [![codecov](https://codecov.io/gh/nfcharles/sparq-yoots/branch/master/graph/badge.svg)](https://codecov.io/gh/nfcharles/sparq-yoots)
 [![Clojars Project](https://img.shields.io/clojars/v/sparq-yoots.svg)](https://clojars.org/sparq-yoots)
 
 A simple Clojure library designed to facilitate easier integration w/ spark. Contains handy utilities, wrappers, functional patterns, etc.  This is NOT a fully featured clojure DSL.  Some features include easy schema configuration, data loading and UDF generation.
 
-```clj
-[sparq-yoots "0.2.0"]
-```
 
 ## Usage
 
@@ -127,6 +124,33 @@ A simple Clojure library designed to facilitate easier integration w/ spark. Con
 ...
 ```
 
+### Functions
+
+Use `gen-col` macro for creating named column functions.
+
+#### `gen-col` macro
+
+```clojure
+
+(gen-col "col-1"    "col_1")
+(gen-col "tmp-col"  "_temp_col")
+
+
+(col-1)                           ;; "col_1"
+(col-1 :field "foo")              ;; "col_1.foo"
+(col-1 :alias :index 0 :as "foo") ;; "a.col_1[0] AS foo"
+(col-1 :cast "int")               ;; "CAST(col_1 AS int)"
+```
+
+#### Column Readers
+
+Convenience functions during UDF processing.
+
+```clojure
+(def FOO (partial sparq.sql/double-col 0))
+(def BAR (partial sparq.sql/bool-col   1))
+(def BAZ (partial sparq.sql/int-col    2))
+```
 
 ## License
 
